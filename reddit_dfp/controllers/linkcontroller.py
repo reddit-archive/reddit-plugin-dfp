@@ -93,9 +93,6 @@ class LinkController(ApiController):
             try:
                 creative = creatives_service.by_id(external_id)
             except:
-                creative = None
-
-            if not creative:
                 abort(404)
 
             link = _create_link(creative)
