@@ -1,20 +1,18 @@
 import time
 
 from googleads import dfp
-from pylons import g
 from suds import WebFault
 
 from reddit_dfp.lib import errors
-from reddit_dfp.services import authentication_service
+from reddit_dfp.lib.dfp import get_service
 
 MAX_RETRIES = 3
 
-dfp_client = authentication_service.get_client()
-dfp_company_service = dfp_client.GetService("CompanyService", version=g.dfp_service_version)
-
 
 def get_advertiser(user):
+    dfp_company_service = get_service("CompanyService")
     advertiser_id = getattr(user, "dfp_advertiser_id", None)
+
     if not advertiser_id:
         return None
 
@@ -53,6 +51,8 @@ def get_advertiser(user):
 
 
 def create_advertiser(user):
+    dfp_company_service = get_service("CompanyService")
+
     companies = [{
         "name": user.name,
         "type": "ADVERTISER",

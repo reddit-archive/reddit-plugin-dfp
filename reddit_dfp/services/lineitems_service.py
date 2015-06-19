@@ -1,11 +1,9 @@
 from googleads import dfp
 from pylons import g
 
-from r2.models import promo
-
+from reddit_dfp.lib.dfp import get_service
 from reddit_dfp.lib.merge import merge_deep
 from reddit_dfp.services import (
-    authentication_service,
     orders_service,
 )
 
@@ -34,12 +32,6 @@ LINE_ITEM_DEFAULTS = {
     },
 }
 
-dfp_client = authentication_service.get_client()
-dfp_lineitems_service = dfp_client.GetService(
-    "LineItemService", version=g.dfp_service_version)
-dfp_lica_service = dfp_client.GetService(
-    "LineItemCreativeAssociationService", version=g.dfp_service_version)
-
 
 def _date_to_string(date, format="%d/%m/%y"):
     return date.strftime(format)
@@ -64,7 +56,9 @@ def _get_cost_type(campaign):
     return "CPM" # everything is CPM currently
 
 
-def _date_to_dfp_datetime(date, hour, timezone_id=g.dfp_timezone_id):
+def _date_to_dfp_datetime(date, hour, timezone_id=None):
+    if timezone_id is None:
+        timezone_id = g.dfp_timezone_id
     return {
         "date": {
             "year": date.year,
@@ -79,6 +73,8 @@ def _date_to_dfp_datetime(date, hour, timezone_id=g.dfp_timezone_id):
 
 
 def _priority_to_lineitem_type(priority):
+    from r2.models import promo
+
     if priority == promo.HIGH:
         return "SPONSORSHIP"
     elif priority == promo.MEDIUM:
@@ -124,6 +120,8 @@ def _campaign_to_lineitem(campaign, order=None, existing=None):
 
 
 def get_lineitem(campaign):
+    dfp_lineitems_service = get_service("LineItemService")
+
     values = [{
         "key": "externalId",
         "value": {
@@ -142,6 +140,7 @@ def get_lineitem(campaign):
         return None
 
 def create_lineitem(user, campaign):
+    dfp_lineitems_service = get_service("LineItemService")
     order = orders_service.upsert_order(user)
 
     lineitem = _campaign_to_lineitem(campaign, order=order)
@@ -150,6 +149,7 @@ def create_lineitem(user, campaign):
     return lineitems[0]
 
 def upsert_lineitem(user, campaign):
+    dfp_lineitems_service = get_service("LineItemService")
     lineitem = get_lineitem(campaign)
 
     if not lineitem:
@@ -166,6 +166,8 @@ def upsert_lineitem(user, campaign):
 
 
 def associate_with_creative(lineitem, creative):
+    dfp_lica_service = get_service("LineItemCreativeAssociationService")
+
     lineitem_id = lineitem["id"]
     creative_id = creative["id"]
 
@@ -200,6 +202,7 @@ def associate_with_creative(lineitem, creative):
 
 
 def deactivate(campaign):
+    dfp_lica_service = get_service("LineItemCreativeAssociationService")
     lineitem = get_lineitem(campaign)
 
     if not lineitem:

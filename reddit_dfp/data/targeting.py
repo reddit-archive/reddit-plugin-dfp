@@ -5,13 +5,11 @@ from googleads import dfp
 from pylons import g
 
 from reddit_dfp.data.states import state_abbreviations
-from reddit_dfp.services import authentication_service
-
-dfp_client = authentication_service.get_client()
-dfp_report_downloader = dfp_client.GetDataDownloader(version=g.dfp_service_version)
+from reddit_dfp.lib.dfp import get_downloader
 
 
 def _download_geos():
+    dfp_report_downloader = get_downloader()
     tmp_geos = tempfile.NamedTemporaryFile(
             prefix="geo_targets_", suffix=".csv", mode="w", delete=False)
 
@@ -31,6 +29,7 @@ def _download_geos():
 
 
 def _download_mobile_os():
+    dfp_report_downloader = get_downloader()
     output_file = tempfile.NamedTemporaryFile(
             prefix="os_targets_", suffix=".csv", mode="w", delete=False)
 
@@ -85,15 +84,4 @@ def _parse_geos():
                     continue
 
             if row_type == "DMA_REGION":
-
-
-
-
-
-temp_mobile_os = _download_mobile_os()
-
-
-
-
-
 

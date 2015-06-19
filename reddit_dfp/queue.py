@@ -1,22 +1,19 @@
 import json
 
 from collections import defaultdict
+from datetime import datetime, timedelta
 from pylons import g
 
 from r2.lib import (
     amqp,
 )
-from r2.models import (
-    Account,
-    Link,
-    NotFound,
-    PromoCampaign,
-)
 
+from reddit_dfp.lib.errors import RateLimitException
 from reddit_dfp.services import lineitems_service
 
 
 DFP_QUEUE = "dfp_q"
+RATE_LIMIT_ENDS_AT = "dfp-rate-limit-ends-at"
 
 
 class Processor():
@@ -41,6 +38,39 @@ class Processor():
 
 
 def process():
+    from r2.models import (
+        Account,
+        Link,
+        NotFound,
+        PromoCampaign,
+    )
+
+    def _handle_upsert_promotion(payload):
+        link = Link._by_fullname(payload["link"], data=True)
+        author = Account._byID(link.author_id)
+
+        creatives_service.upsert_creative(author, link)
+
+
+    def _handle_upsert_campaign(payload):
+        link = Link._by_fullname(payload["link"], data=True)
+        campaign = PromoCampaign._by_fullname(payload["campaign"], data=True)
+        owner = Account._byID(campaign.owner_id)
+
+        lineitem = lineitems_service.upsert_lineitem(owner, campaign)
+        creative = creatives_service.get_creative(link)
+
+        lineitems_service.associate_with_creative(
+            lineitem=lineitem, creative=creative)
+
+
+    def _handle_deactivate_campaign(payload):
+        campaign = PromoCampaign._by_fullname(payload["campaign"])
+
+        lineitem = lineitems_service.get_lineitem(campaign)
+        if lineitem:
+            lineitems_service.deactivate(lineitem)
+
     processor = Processor()
     processor.register("upsert_promotion", _handle_upsert_promotion)
     processor.register("upsert_campaign", _handle_upsert_campaign)
@@ -48,13 +78,26 @@ def process():
 
     @g.stats.amqp_processor(DFP_QUEUE)
     def _handler(message):
+        rate_limit_ends_at = g.cache.get(RATE_LIMIT_ENDS_AT)
+        now_utc = datetime.utcnow()
+
+        if rate_limit_ends_at:
+            if now_utc > rate_limit_ends_at:
+                g.cache.delete(RATE_LIMIT_ENDS_AT)
+            else:
+                raise RateLimitException("waiting until %s" % rate_limit_ends_at)
+
         data = json.loads(message.body)
         g.log.debug("processing action: %s" % data)
 
         action = data.get("action")
         payload = data.get("payload")
 
-        processor.call(action, payload)
+        try:
+            processor.call(action, payload)
+        except RateLimitException as e:
+            g.cache.set(RATE_LIMIT_ENDS_AT, datetime.utcnow() + timedelta(mins=1))
+            raise e
 
     amqp.consume_items(DFP_QUEUE, _handler, verbose=False)
 
@@ -66,31 +109,4 @@ def push(action, payload):
         "payload": payload,
     })
     amqp.add_item(DFP_QUEUE, message)
-
-
-def _handle_upsert_promotion(payload):
-    link = Link._by_fullname(payload["link"], data=True)
-    author = Account._byID(link.author_id)
-
-    creatives_service.upsert_creative(author, link)
-
-
-def _handle_upsert_campaign(payload):
-    link = Link._by_fullname(payload["link"], data=True)
-    campaign = PromoCampaign._by_fullname(payload["campaign"], data=True)
-    owner = Account._byID(campaign.owner_id)
-
-    lineitem = lineitems_service.upsert_lineitem(owner, campaign)
-    creative = creatives_service.get_creative(link)
-
-    lineitems_service.associate_with_creative(
-        lineitem=lineitem, creative=creative)
-
-
-def _handle_deactivate_campaign(payload):
-    campaign = PromoCampaign._by_fullname(payload["campaign"])
-
-    lineitem = lineitems_service.get_lineitem(campaign)
-    if lineitem:
-        lineitems_service.deactivate(lineitem)
 

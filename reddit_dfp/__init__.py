@@ -2,7 +2,6 @@ from r2.lib.configparse import ConfigValue
 from r2.lib.js import Module
 from r2.lib.plugin import Plugin
 
-from reddit_dfp import queue
 
 class Dfp(Plugin):
     needs_static_build = False
@@ -25,6 +24,7 @@ class Dfp(Plugin):
 
     def declare_queues(self, queues):
         from r2.config.queues import MessageQueue
+        from reddit_dfp import queue
 
         queues.declare({
             queue.DFP_QUEUE: MessageQueue(bind_to_self=True),
@@ -36,5 +36,7 @@ class Dfp(Plugin):
     def load_controllers(self):
         from reddit_dfp.controllers.linkcontroller import LinkController
         from reddit_dfp.hooks import hooks
+        from reddit_dfp.lib import dfp
 
+        dfp.load_client()
         hooks.register_all()

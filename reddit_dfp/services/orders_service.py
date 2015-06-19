@@ -1,15 +1,14 @@
 from googleads import dfp
 from pylons import g
 
+from reddit_dfp.lib.dfp import get_service
 from reddit_dfp.services import (
     advertisers_service,
-    authentication_service,
 )
 
-dfp_client = authentication_service.get_client()
-dfp_order_service = dfp_client.GetService("OrderService", version=g.dfp_service_version)
 
 def get_order(user):
+    dfp_order_service = get_service("OrderService")
     advertiser = advertisers_service.upsert_advertiser(user)
     advertiser_id = advertiser.id
 
@@ -42,6 +41,7 @@ def get_order(user):
 
 
 def create_order(user):
+    dfp_order_service = get_service("OrderService")
     advertiser_id = getattr(user, "dfp_advertiser_id", None)
 
     if not advertiser_id:

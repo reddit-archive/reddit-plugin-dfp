@@ -8,9 +8,9 @@ from r2.models import (
     promo,
 )
 
+from reddit_dfp.lib.dfp import get_service
 from reddit_dfp.lib.merge import merge_deep
 from reddit_dfp.services import (
-    authentication_service,
     lineitems_service,
     advertisers_service,
 )
@@ -19,16 +19,6 @@ NATIVE_SIZE = {
     "width": "1",
     "height": "1",
 }
-CREATIVE_DEFAULTS = {
-    "xsi_type": "TemplateCreative",
-    "size": NATIVE_SIZE,
-    "creativeTemplateId": g.dfp_selfserve_template_id,
-}
-
-
-dfp_client = authentication_service.get_client()
-dfp_creatives_service = dfp_client.GetService(
-    "CreativeService", version=g.dfp_service_version)
 
 
 def _trim(string, length):
@@ -40,6 +30,12 @@ def _get_creative_name(link):
 
 
 def _link_to_creative(link, advertiser=None, existing=None):
+    defaults = {
+        "xsi_type": "TemplateCreative",
+        "size": NATIVE_SIZE,
+        "creativeTemplateId": g.dfp_selfserve_template_id,
+    }
+
     if not (existing or advertiser):
         raise ValueError("must either pass an advertiser or an existing creative.")
 
@@ -83,7 +79,7 @@ def _link_to_creative(link, advertiser=None, existing=None):
     if existing:
         return merge_deep(existing, creative)
     else:
-        return merge_deep(creative, CREATIVE_DEFAULTS, {
+        return merge_deep(creative, defaults, {
             "advertiserId": advertiser_id,
         })
 
@@ -98,6 +94,8 @@ def get_creative(link):
 
 
 def by_id(creative_id):
+    dfp_creatives_service = get_service("CreativeService")
+
     values = [{
         "key": "id",
         "value": {
@@ -118,13 +116,14 @@ def by_id(creative_id):
 
 
 def create_creative(user, link):
+    dfp_creatives_service = get_service("CreativeService")
     advertiser = advertisers_service.upsert_advertiser(user)
-
     creative = _link_to_creative(link, advertiser=advertiser)
 
     return dfp_creatives_service.createCreative(creative)
 
 def upsert_creative(user, link):
+    dfp_creatives_service = get_service("CreativeService")
     creative = get_creative(link)
 
     if not creative:
