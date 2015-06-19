@@ -1,0 +1,8 @@
+# build files
+*.egg-info
+*.sw[op]
+*.py[oc]
+.DS_Store
+build/
+# private key
+id_dfp
