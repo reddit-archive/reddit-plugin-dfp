@@ -1,8 +1,11 @@
 from pylons import g
 
 from r2.controllers import add_controller
-from r2.controllers.api import ApiController
-from r2.controllers.oauth2 import allow_oauth2_clients
+from r2.controllers.oauth2 import allow_oauth2_access
+from r2.controllers.reddit_base import (
+    cross_domain,
+    RedditController,
+)
 from r2.lib.base import abort
 from r2.lib.errors import errors
 from r2.lib.validator import (
@@ -78,7 +81,9 @@ def _create_link(creative):
 
 
 @add_controller
-class LinkController(ApiController):
+class LinkController(RedditController):
+    @cross_domain(allow_credentials=True)
+    @allow_oauth2_access
     @json_validate(
         VModhashIfLoggedIn(),
         external_id=VInt("external_id", min=0),
@@ -99,7 +104,7 @@ class LinkController(ApiController):
 
             LinksByExternalId.add(link)
 
-        listing = wrap_links(link)
+        listing = wrap_links([link])
         thing = listing.things[0]
 
         return thing.render()
