@@ -59,7 +59,8 @@ class LinkController(RedditController):
         if not link:
             try:
                 creative = creatives_service.by_id(dfp_creative_id)
-            except:
+            except Exception as e:
+                g.log.error("dfp error: %s" % e)
                 abort(404)
 
             link = utils.dfp_creative_to_link(creative)
