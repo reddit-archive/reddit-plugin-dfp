@@ -1,7 +1,7 @@
 from googleads import dfp
 from pylons import g
 
-from reddit_dfp.lib.dfp import get_service
+from reddit_dfp.lib.dfp import DfpService
 from reddit_dfp.lib.merge import merge_deep
 from reddit_dfp.services import (
     orders_service,
@@ -120,7 +120,7 @@ def _campaign_to_lineitem(campaign, order=None, existing=None):
 
 
 def get_lineitem(campaign):
-    dfp_lineitems_service = get_service("LineItemService")
+    dfp_lineitem_service = DfpService("LineItemService")
 
     values = [{
         "key": "externalId",
@@ -131,7 +131,8 @@ def get_lineitem(campaign):
     }]
     query = "WHERE externalId = :externalId"
     statement = dfp.FilterStatement(query, values, 1)
-    response = dfp_lineitems_service.getLineItemsByStatement(
+    response = dfp_lineitem_service.execute(
+                    "getLineItemsByStatement",
                     statement.ToStatement())
 
     if ("results" in response and len(response["results"])):
@@ -140,16 +141,16 @@ def get_lineitem(campaign):
         return None
 
 def create_lineitem(user, campaign):
-    dfp_lineitems_service = get_service("LineItemService")
+    dfp_lineitem_service = DfpService("LineItemService")
     order = orders_service.upsert_order(user)
 
     lineitem = _campaign_to_lineitem(campaign, order=order)
-    lineitems = dfp_lineitems_service.createLineItems([lineitem])
+    lineitems = dfp_lineitem_service.execute("createLineItems", [lineitem])
 
     return lineitems[0]
 
 def upsert_lineitem(user, campaign):
-    dfp_lineitems_service = get_service("LineItemService")
+    dfp_lineitem_service = DfpService("LineItemService")
     lineitem = get_lineitem(campaign)
 
     if not lineitem:
@@ -160,13 +161,13 @@ def upsert_lineitem(user, campaign):
                 (lineitem["id"], campaign._id))
 
     updated = _campaign_to_lineitem(campaign, existing=lineitem)
-    lineitems = dfp_lineitems_service.updateLineItems([updated])
+    lineitems = dfp_lineitem_service.execute("updateLineItems", [updated])
 
     return lineitems[0]
 
 
 def associate_with_creative(lineitem, creative):
-    dfp_lica_service = get_service("LineItemCreativeAssociationService")
+    dfp_association_service = DfpService("LineItemCreativeAssociationService")
 
     lineitem_id = lineitem["id"]
     creative_id = creative["id"]
@@ -187,22 +188,25 @@ def associate_with_creative(lineitem, creative):
     query = "WHERE lineItemId = :lineItemId AND creativeId = :creativeId"
     statement = dfp.FilterStatement(query, values, 1)
 
-    response = dfp_lica_service.getLineItemCreativeAssociationsByStatement(
+    response = dfp_association_service.execute(
+                    "getLineItemCreativeAssociationsByStatement",
                     statement.ToStatement())
 
     if ("results" in response and len(response["results"])):
         association = response["results"][0]
     else:
-        associations = dfp_lica_service.createLineItemCreativeAssociations([{
-            "lineItemId": lineitem_id,
-            "creativeId": creative_id,
-        }])
+        associations = dfp_association_service.execute(
+            "createLineItemCreativeAssociations",
+            [{
+                "lineItemId": lineitem_id,
+                "creativeId": creative_id,
+            }])
 
         return associations[0]
 
 
 def deactivate(campaign):
-    dfp_lica_service = get_service("LineItemCreativeAssociationService")
+    dfp_association_service = DfpService("LineItemCreativeAssociationService")
     lineitem = get_lineitem(campaign)
 
     if not lineitem:
@@ -226,7 +230,8 @@ def deactivate(campaign):
     query = "WHERE lineItemId = :lineItemId AND status = :status"
     statement = dfp.FilterStatement(query, values, 1)
 
-    response = dfp_lica_service.getLineItemCreativeAssociationsByStatement(
+    response = dfp_association_service.execute(
+            "getLineItemCreativeAssociationsByStatement",
             statement.ToStatement())
 
     return result and int(result["numChanges"]) > 0

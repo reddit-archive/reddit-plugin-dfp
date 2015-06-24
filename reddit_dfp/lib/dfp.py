@@ -3,6 +3,7 @@ from googleads import oauth2
 from os import path
 from pylons import g
 
+from reddit_dfp.lib import errors
 
 KEY_FILE = path.join(path.dirname(path.abspath(__file__)), "../../id_dfp")
 
@@ -28,3 +29,31 @@ def get_service(service):
 
 def get_downloader():
     return _client.GetDataDownloader(version=g.dfp_service_version)
+
+
+class DfpService():
+    def __init__(self, service_name, retries=3, delay_exponent=2):
+        self.service = get_service(service_name)
+        self.retries = 3
+        self.delay_exponent = delay_exponent
+        self.attempt = 0
+
+    def execute(method, *args, **kwargs):
+        response = None
+        call = getattr(self.service, method)
+        while response == None and self.attempt < self.retries:
+            try:
+                response = call(*args, **kwargs)
+            except WebFault as e:
+                if errors.get_reason(e) == "EXCEEDED_QUOTA":
+                    wait = self.attempt ** self.delay_exponent
+                    g.log.debug("failed attempt %d, retrying in %d seconds." % ((self.attempt + 1), wait))
+                    time.sleep(wait)
+                    self.attempt += 1
+                else:
+                    raise e
+
+        if not response:
+            raise RateLimitException("failed after %d attempts" % (self.attempt + 1))
+
+        return response

@@ -8,7 +8,7 @@ from r2.models import (
     promo,
 )
 
-from reddit_dfp.lib.dfp import get_service
+from reddit_dfp.lib.dfp import DfpService
 from reddit_dfp.lib.merge import merge_deep
 from reddit_dfp.services import (
     lineitems_service,
@@ -94,7 +94,7 @@ def get_creative(link):
 
 
 def by_id(creative_id):
-    dfp_creatives_service = get_service("CreativeService")
+    dfp_creative_service = DfpService("CreativeService")
 
     values = [{
         "key": "id",
@@ -103,11 +103,10 @@ def by_id(creative_id):
             "value": creative_id,
         },
     }]
-    query = "WHERE id = :id"
-    statement = dfp.FilterStatement(query, values, 1)
 
-    response = dfp_creatives_service.getCreativesByStatement(
-                    statement.ToStatement())
+    query = "WHERE id = :id"
+    statement = dfp.FilterStatement(query, values, 1).ToStatement()
+    response = dfp_creative_service.execute("getCreativesByStatement", statement)
 
     if ("results" in response and len(response["results"])):
         return response["results"][0]
@@ -116,21 +115,25 @@ def by_id(creative_id):
 
 
 def create_creative(user, link):
-    dfp_creatives_service = get_service("CreativeService")
+    dfp_creative_service = DfpService("CreativeService")
     advertiser = advertisers_service.upsert_advertiser(user)
     creative = _link_to_creative(link, advertiser=advertiser)
 
-    return dfp_creatives_service.createCreative(creative)
+    return dfp_creative_service.execute("createCreative", creative)
 
 def upsert_creative(user, link):
-    dfp_creatives_service = get_service("CreativeService")
     creative = get_creative(link)
 
     if not creative:
         return create_creative(user, link)
 
-    updated = _link_to_creative(link, existing=lineitem)
-    creatives = dfp_creatives_service.updateCreatives([updated])
+    return update_creative(link, creative)
+
+
+def update_creative(link, creative):
+    dfp_creative_service = DfpService("CreativeService")
+    updated = _link_to_creative(link, existing=creative)
+    creatives = dfp_creative_service.execute("updateCreatives", [updated])
 
     return creatives[0]
 

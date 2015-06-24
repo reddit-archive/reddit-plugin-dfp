@@ -1,14 +1,14 @@
 from googleads import dfp
 from pylons import g
 
-from reddit_dfp.lib.dfp import get_service
+from reddit_dfp.lib.dfp import DfpService
 from reddit_dfp.services import (
     advertisers_service,
 )
 
 
 def get_order(user):
-    dfp_order_service = get_service("OrderService")
+    dfp_order_service = DfpService("OrderService")
     advertiser = advertisers_service.upsert_advertiser(user)
     advertiser_id = advertiser.id
 
@@ -31,7 +31,8 @@ def get_order(user):
     query = "WHERE advertiserId = :advertiserId AND traffickerId = :traffickerId"
     statement = dfp.FilterStatement(query, values, 1)
 
-    response = dfp_order_service.getOrdersByStatement(
+    response = dfp_order_service.execute(
+                "getOrdersByStatement",
                 statement.ToStatement())
 
     if ("results" in response and len(response["results"])):
@@ -41,7 +42,7 @@ def get_order(user):
 
 
 def create_order(user):
-    dfp_order_service = get_service("OrderService")
+    dfp_order_service = DfpService("OrderService")
     advertiser_id = getattr(user, "dfp_advertiser_id", None)
 
     if not advertiser_id:
@@ -55,7 +56,7 @@ def create_order(user):
         "externalOrderId": user._fullname,
     }]
 
-    orders = dfp_order_service.createOrders(orders)
+    orders = dfp_order_service.execute("createOrders", orders)
 
     return orders[0]
 
