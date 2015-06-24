@@ -112,7 +112,7 @@ def process():
         try:
             processor.call(action, payload)
         except RateLimitException as e:
-            g.cache.set(RATE_LIMIT_ENDS_AT, datetime.utcnow() + timedelta(mins=1))
+            g.cache.set(RATE_LIMIT_ENDS_AT, datetime.utcnow() + timedelta(minutes=1))
             raise e
 
     amqp.consume_items(DFP_QUEUE, _handler, verbose=False)
