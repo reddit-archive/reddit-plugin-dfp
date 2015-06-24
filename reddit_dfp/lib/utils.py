@@ -1,15 +1,18 @@
 # coding=utf-8
 
 from datetime import datetime
+from pylons import g
 
 ONE_MICRO_DOLLAR = 1000000
 
 
 def get_dfp_subreddit():
+    from r2.models import Subreddit
     return Subreddit._byID(Subreddit.get_promote_srid())
 
 
 def get_dfp_user():
+    from r2.models import Account
     return Account._by_name(g.dfp_user)
 
 
@@ -65,6 +68,8 @@ def dfp_template_to_dict(template):
 
 
 def dfp_creative_to_link(creative, link=None):
+    from r2.models import Link
+
     user = get_dfp_user()
     sr = get_dfp_subreddit()
     attributes = dfp_template_to_dict(

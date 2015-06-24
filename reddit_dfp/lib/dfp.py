@@ -38,7 +38,7 @@ class DfpService():
         self.delay_exponent = delay_exponent
         self.attempt = 0
 
-    def execute(method, *args, **kwargs):
+    def execute(self, method, *args, **kwargs):
         response = None
         call = getattr(self.service, method)
         while response == None and self.attempt < self.retries:
