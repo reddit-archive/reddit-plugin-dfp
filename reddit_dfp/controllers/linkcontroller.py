@@ -22,62 +22,13 @@ from r2.lib.pages.things import (
     wrap_links,
 )
 
+from reddit_dfp.lib import utils
 from reddit_dfp.models.cache import LinksByDfpCreativeId
 from reddit_dfp.services import creatives_service
 
-def _get_subreddit():
-    return Subreddit._byID(Subreddit.get_promote_srid())
 
 
-def _get_user():
-    return Account.system_user()
 
-
-def _template_to_dict(creative):
-    result = {}
-    for definition in creative.creativeTemplateVariableValues:
-        key = definition["uniqueName"]
-        value = getattr(definition, "value", None)
-        if value:
-            value = str(value)
-
-        result[key] = value
-
-    return result
-
-
-def _create_link(creative):
-
-    """
-    Creates a link to allow third party voting/commenting
-    """
-
-    user = _get_user()
-    sr = _get_subreddit()
-    attributes = _template_to_dict(creative)
-
-    kind = "self" if attributes["selftext"] else "link"
-    url = attributes["url"] if kind == "link" else "self"
-    link = Link._submit(
-        attributes["title"], url, user, sr,
-        ip="127.0.0.1", sendreplies=False,
-    )
-
-    if kind == "self":
-        link.url = link.make_permalink_slow()
-        link.is_self = True
-        link.selftext = attributes["selftext"]
-
-    link.promoted = True
-    link.third_party_promo = True
-    link.thumbnail_url = attributes["thumbnail_url"]
-    link.mobile_ad_url = attributes["mobile_ad_url"]
-    link.third_party_tracking = attributes["third_party_tracking"]
-    link.third_party_tracking_2 = attributes["third_party_tracking_2"]
-    link.external_id = creative["id"]
-
-    link._commit()
-    return link
 
 
 @add_controller
@@ -100,7 +51,7 @@ class LinkController(RedditController):
             except:
                 abort(404)
 
-            link = _create_link(creative)
+            link = utils.dfp_creative_to_link(creative)
 
             LinksByDfpCreativeId.add(link)
 

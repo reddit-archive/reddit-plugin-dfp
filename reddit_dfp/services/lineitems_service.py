@@ -1,13 +1,13 @@
 from googleads import dfp
 from pylons import g
 
+from reddit_dfp.lib import utils
 from reddit_dfp.lib.dfp import DfpService
 from reddit_dfp.lib.merge import merge_deep
 from reddit_dfp.services import (
     orders_service,
 )
 
-ONE_MICRO_DOLLAR = 1000000
 NATIVE_SIZE = {
     "width": "1",
     "height": "1",
@@ -56,22 +56,6 @@ def _get_cost_type(campaign):
     return "CPM" # everything is CPM currently
 
 
-def _date_to_dfp_datetime(date, hour, timezone_id=None):
-    if timezone_id is None:
-        timezone_id = g.dfp_timezone_id
-    return {
-        "date": {
-            "year": date.year,
-            "month": date.month,
-            "day": date.day,
-        },
-        "hour": str(hour),
-        "minute": "0",
-        "second": "0",
-        "timeZoneID": timezone_id,
-    }
-
-
 def _priority_to_lineitem_type(priority):
     from r2.models import promo
 
@@ -85,23 +69,16 @@ def _priority_to_lineitem_type(priority):
         return "HOUSE"
 
 
-def _dollars_to_money(dollars):
-    return {
-        "currencyCode": "USD",
-        "microAmount": dollars * ONE_MICRO_DOLLAR,
-    }
-
-
 def _campaign_to_lineitem(campaign, order=None, existing=None):
     if not (existing or order):
         raise ValueError("must either pass an order or an existing lineitem.")
 
     lineitem = {
         "name": _get_campaign_name(campaign),
-        "startDateTime": _date_to_dfp_datetime(campaign.start_date),
-        "endDateTime": _date_to_dfp_datetime(campaign.end_date),
+        "startDateTime": utils.datetime_to_dfp_datetime(campaign.start_date),
+        "endDateTime": utils.datetime_to_dfp_datetime(campaign.end_date),
         "lineItemType": _priority_to_lineitem_type(campaign.priority),
-        "costPerUnit": _dollars_to_money(campaign.cpm / 100),
+        "costPerUnit": utils.dollars_to_dfp_money(campaign.cpm / 100),
         "costType": _get_cost_type(campaign),
         "targetPlatform": _get_platform(campaign),
         "skipInventoryCheck": campaign.priority.inventory_override,

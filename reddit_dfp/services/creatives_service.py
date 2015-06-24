@@ -1,5 +1,3 @@
-# coding=utf-8
-
 from googleads import dfp
 from pylons import g
 
@@ -8,6 +6,7 @@ from r2.models import (
     promo,
 )
 
+from reddit_dfp.lib import utils
 from reddit_dfp.lib.dfp import DfpService
 from reddit_dfp.lib.merge import merge_deep
 from reddit_dfp.services import (
@@ -21,12 +20,8 @@ NATIVE_SIZE = {
 }
 
 
-def _trim(string, length):
-    return string[:length-1] + u"…" if len(string) > length else string
-
-
 def _get_creative_name(link):
-    return "%s [%s]" % (_trim(link.title, 150), _trim(link.url, 100))
+    return "%s [%s]" % (utils.trim(link.title, 150), utils.trim(link.url, 100))
 
 
 def _link_to_creative(link, advertiser=None, existing=None):
