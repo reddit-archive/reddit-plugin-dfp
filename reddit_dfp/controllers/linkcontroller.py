@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from pylons import g
 
 from r2.controllers import add_controller
@@ -22,13 +23,20 @@ from r2.lib.pages.things import (
     wrap_links,
 )
 
+from reddit_dfp import queue
 from reddit_dfp.lib import utils
 from reddit_dfp.models.cache import LinksByDfpCreativeId
 from reddit_dfp.services import creatives_service
 
 
+def _check_edits(link):
+    checking_edits = getattr(link, "dfp_checking_edits", False)
 
+    if not checking_edits:
+        TryLater.schedule("dfp_check_edits", link._fullname, timedelta(minutes=5))
 
+        link.dfp_checking_edits = True
+        link._commit()
 
 
 @add_controller
@@ -44,6 +52,9 @@ class LinkController(RedditController):
             return
 
         link = LinksByDfpCreativeId.get(dfp_creative_id)
+
+        if link:
+            _check_edits(link)
 
         if not link:
             try:

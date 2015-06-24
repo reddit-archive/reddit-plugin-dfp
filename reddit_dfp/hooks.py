@@ -33,3 +33,11 @@ def delete_campaign(link, campaign):
         "campaign": campaign._fullname,
     })
 
+
+@hooks.on("trylater.check_edits")
+def check_edits(data):
+    for fullname in data.values():
+        queue.push("check_edits", {
+            "link": fullname,
+        })
+

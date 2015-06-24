@@ -71,10 +71,22 @@ def process():
         if lineitem:
             lineitems_service.deactivate(lineitem)
 
+
+    def _handle_check_edits(payload):
+        creative = creatives_service.get_creative(link)
+
+        link = utils.dfp_creative_to_link(
+            creative, link=Link._by_fullname(payload["link"], data=True))
+
+        link.dfp_checking_edits = False
+        link._commit()
+
+
     processor = Processor()
     processor.register("upsert_promotion", _handle_upsert_promotion)
     processor.register("upsert_campaign", _handle_upsert_campaign)
     processor.register("deactivate_campaign", _handle_deactivate_campaign)
+    processor.register("check_edits", _handle_check_edits)
 
     @g.stats.amqp_processor(DFP_QUEUE)
     def _handler(message):
