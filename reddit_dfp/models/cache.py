@@ -3,25 +3,25 @@ from r2.models import (
     Link,
 )
 
-class LinksByExternalId(tdb_cassandra.View):
+class LinksByDfpCreativeId(tdb_cassandra.View):
     _use_db = True
     _connection_pool = "main"
     _read_consistency_level = tdb_cassandra.CL.ONE
 
     @staticmethod
-    def _row_key(external_id):
-        return str(external_id)
+    def _row_key(dfp_creative_id):
+        return str(dfp_creative_id)
 
     @classmethod
     def add(cls, link):
-        external_id = getattr(link, "external_id")
+        dfp_creative_id = getattr(link, "dfp_creative_id")
 
-        cls._set_values(cls._row_key(external_id), {link._id36: ""})
+        cls._set_values(cls._row_key(dfp_creative_id), {link._id36: ""})
 
     @classmethod
-    def get(cls, external_id):
+    def get(cls, dfp_creative_id):
         try:
-            columns = cls._byID(cls._row_key(external_id))._values()
+            columns = cls._byID(cls._row_key(dfp_creative_id))._values()
             id36 = columns.keys()[0]
         except tdb_cassandra.NotFound:
             return None

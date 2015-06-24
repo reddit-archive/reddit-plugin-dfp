@@ -22,7 +22,7 @@ from r2.lib.pages.things import (
     wrap_links,
 )
 
-from reddit_dfp.models.cache import LinksByExternalId
+from reddit_dfp.models.cache import LinksByDfpCreativeId
 from reddit_dfp.services import creatives_service
 
 def _get_subreddit():
@@ -86,23 +86,23 @@ class LinkController(RedditController):
     @allow_oauth2_access
     @json_validate(
         VModhashIfLoggedIn(),
-        external_id=VInt("external_id", min=0),
+        dfp_creative_id=VInt("dfp_creative_id", min=0),
     )
-    def POST_link_from_id(self, responder, external_id, *a, **kw):
-        if (responder.has_errors("external_id", errors.BAD_NUMBER)):
+    def POST_link_from_id(self, responder, dfp_creative_id, *a, **kw):
+        if (responder.has_errors("dfp_creative_id", errors.BAD_NUMBER)):
             return
 
-        link = LinksByExternalId.get(external_id)
+        link = LinksByDfpCreativeId.get(dfp_creative_id)
 
         if not link:
             try:
-                creative = creatives_service.by_id(external_id)
+                creative = creatives_service.by_id(dfp_creative_id)
             except:
                 abort(404)
 
             link = _create_link(creative)
 
-            LinksByExternalId.add(link)
+            LinksByDfpCreativeId.add(link)
 
         listing = wrap_links([link])
         thing = listing.things[0]
