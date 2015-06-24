@@ -4,6 +4,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 from pylons import g
 
+from r2.config import feature
 from r2.lib import (
     amqp,
 )
@@ -83,9 +84,12 @@ def process():
 
 
     processor = Processor()
-    processor.register("upsert_promotion", _handle_upsert_promotion)
-    processor.register("upsert_campaign", _handle_upsert_campaign)
-    processor.register("deactivate_campaign", _handle_deactivate_campaign)
+
+    if feature.is_enabled("dfp_selfserve"):
+        processor.register("upsert_promotion", _handle_upsert_promotion)
+        processor.register("upsert_campaign", _handle_upsert_campaign)
+        processor.register("deactivate_campaign", _handle_deactivate_campaign)
+
     processor.register("check_edits", _handle_check_edits)
 
     @g.stats.amqp_processor(DFP_QUEUE)
