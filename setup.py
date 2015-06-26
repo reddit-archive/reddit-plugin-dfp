@@ -8,6 +8,9 @@ setup(name='reddit_dfp',
     install_requires=[
         'r2',
     ],
+    tests_require=[
+        'mock',
+    ],
     entry_points={
         'r2.plugin':
             ['dfp = reddit_dfp:Dfp']
