@@ -68,7 +68,10 @@ def dfp_template_to_dict(template):
 
 
 def dfp_creative_to_link(creative, link=None):
-    from r2.models import Link
+    from r2.models import (
+        Link,
+        PROMOTE_STATUS,
+    )
 
     user = get_dfp_user()
     sr = get_dfp_subreddit()
@@ -90,7 +93,7 @@ def dfp_creative_to_link(creative, link=None):
         link.selftext = attributes["selftext"]
 
     link.promoted = True
-    link.third_party_promo = True
+    link.promote_status = PROMOTE_STATUS.promoted
     link.thumbnail_url = attributes["thumbnail_url"]
     link.mobile_ad_url = attributes["mobile_ad_url"]
     link.third_party_tracking = attributes["third_party_tracking"]
