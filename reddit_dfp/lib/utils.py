@@ -28,8 +28,6 @@ def dfp_datetime_to_datetime(dfp_datetime):
 
 
 def datetime_to_dfp_datetime(datetime, timezone_id=None):
-    if timezone_id is None:
-        timezone_id = g.dfp_timezone_id
     return {
         "date": {
             "year": datetime.year,
