@@ -21,7 +21,7 @@ def load_client():
         )
 
         _client = dfp.DfpClient(oauth2_client, g.dfp_project_id)
-        _client.network_code = g.dfp_network_code
+        _client.network_code = g.dfp_test_network_code if g.debug else g.dfp_network_code
 
 
 def get_service(service):
