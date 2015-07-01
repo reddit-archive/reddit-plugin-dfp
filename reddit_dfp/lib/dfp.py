@@ -2,6 +2,7 @@ from googleads import dfp
 from googleads import oauth2
 from os import path
 from pylons import g
+from suds import WebFault
 
 from reddit_dfp.lib import errors
 
