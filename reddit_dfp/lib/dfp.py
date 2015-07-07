@@ -40,6 +40,8 @@ class DfpService():
         self.attempt = 1
 
     def execute(self, method, *args, **kwargs):
+        g.log.debug("executing %s with %s" % (method, (",".join([str(arg) for arg in args]) + "," + str(kwargs))))
+
         response = None
         call = getattr(self.service, method)
         while response == None and self.attempt <= self.retries:
@@ -56,5 +58,7 @@ class DfpService():
 
         if not response and self.attempt == self.retries:
             raise errors.RateLimitException("failed after %d attempts" % self.attempt)
+
+        g.log.debug("%s returned %s" % (method, str(response)))
 
         return response
