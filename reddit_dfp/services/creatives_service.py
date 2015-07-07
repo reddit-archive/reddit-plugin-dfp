@@ -41,7 +41,7 @@ def _link_to_creative(link, advertiser=None, existing=None):
             "uniqueName": "title",
             "value": link.title
         }, {
-            "xsi_type": "UrlCreativeTemplateVariableValue",
+            "xsi_type": "StringCreativeTemplateVariableValue",
             "uniqueName": "url",
             "value": link.url,
         }, {
