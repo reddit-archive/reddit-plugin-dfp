@@ -10,8 +10,6 @@ from r2.lib import (
 )
 
 from reddit_dfp.lib.errors import RateLimitException
-from reddit_dfp.services import lineitems_service
-
 
 DFP_QUEUE = "dfp_q"
 RATE_LIMIT_ENDS_AT = "dfp-rate-limit-ends-at"
@@ -44,6 +42,11 @@ def process():
         Link,
         NotFound,
         PromoCampaign,
+    )
+
+    from reddit_dfp.services import (
+        creatives_service,
+        lineitems_service,
     )
 
     def _handle_upsert_promotion(payload):
