@@ -53,7 +53,7 @@ def create_order(user):
         "advertiserId": advertiser_id,
         "salespersonId": g.dfp_selfserve_salesperson_id,
         "traffickerId": g.dfp_selfserve_trafficker_id,
-        "externalOrderId": user._fullname,
+        "externalOrderId": user._id,
     }]
 
     orders = dfp_order_service.execute("createOrders", orders)
