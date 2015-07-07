@@ -114,7 +114,16 @@ def create_creative(user, link):
     advertiser = advertisers_service.upsert_advertiser(user)
     creative = _link_to_creative(link, advertiser=advertiser)
 
-    return dfp_creative_service.execute("createCreative", creative)
+    response = dfp_creative_service.execute("createCreatives", [creative])
+
+    if ("results" in response and len(response["results"])):
+        creative = response["results"][0]
+        link.dfp_creative_id = creative.id
+        link._commit()
+
+        return creative
+    else:
+        return None
 
 def upsert_creative(user, link):
     creative = get_creative(link)
