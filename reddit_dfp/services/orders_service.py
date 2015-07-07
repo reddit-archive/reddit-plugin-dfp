@@ -21,6 +21,7 @@ def get_order(user):
             "xsi_type": "NumberValue",
             "value": advertiser_id,
         },
+    }, {
         "key": "traffickerId",
         "value": {
             "xsi_type": "NumberValue",
