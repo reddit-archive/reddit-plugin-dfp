@@ -75,7 +75,7 @@ def _link_to_creative(link, advertiser=None, existing=None):
         return merge_deep(existing, creative)
     else:
         return merge_deep(creative, defaults, {
-            "advertiserId": advertiser_id,
+            "advertiserId": advertiser.id,
         })
 
 
