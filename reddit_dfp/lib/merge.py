@@ -18,7 +18,7 @@ def merge_deep(obj, *sources):
             if value is None:
                 continue
             elif (isinstance(value, dict) and
-                    isinstance(obj[prop], dict)):
+                    hasattr(obj, prop) and isinstance(obj[prop], dict)):
                 obj[prop] = merge_deep(obj[prop], value)
             else:
                 obj[prop] = value
