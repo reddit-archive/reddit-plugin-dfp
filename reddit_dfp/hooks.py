@@ -1,6 +1,7 @@
+from r2.lib import promote
 from r2.lib.hooks import HookRegistrar
 from r2.models import (
-    Account,
+    PromoCampaign,
 )
 
 from reddit_dfp import queue
@@ -16,6 +17,15 @@ def upsert_promotion(link):
         "link": link._fullname,
     })
 
+    action = ("activate" 
+                if promote.is_accepted(link) and not link._deleted else
+                    "deactivate")
+    campaigns = PromoCampaign._by_link(link)
+    if not campaigns:
+        return
+
+    queue.push(action, { "campaigns": ",".join([campaign._fullname for campaign in campaigns]) })
+
 
 @hooks.on("promote.new_campaign")
 @hooks.on("promote.edit_campaign")
@@ -24,6 +34,12 @@ def upsert_campaign(link, campaign):
         "link": link._fullname,
         "campaign": campaign._fullname,
     })
+
+    action = ("activate" 
+                if promote.is_accepted(link) and not link._deleted else
+                    "deactivate")
+
+    queue.push(action, { "campaigns": campaign._fullname })
 
 
 @hooks.on("promote.delete_campaign")

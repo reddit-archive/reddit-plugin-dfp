@@ -19,7 +19,7 @@ class Processor():
     def __init__(self):
         self._handlers = defaultdict(list)
 
-    def get_handlers(action):
+    def get_handlers(self, action):
         return self._handlers[action]
 
     def call(self, action, *args, **kwargs):
@@ -33,7 +33,7 @@ class Processor():
 
     def register(self, action, handler):
         existing = self.get_handlers(action)
-        action.append(handler)
+        existing.append(handler)
 
 
 def process():
@@ -60,24 +60,35 @@ def process():
         link = Link._by_fullname(payload["link"], data=True)
         campaign = PromoCampaign._by_fullname(payload["campaign"], data=True)
         owner = Account._byID(campaign.owner_id)
+        author = Account._byID(link.author_id)
 
-        lineitem = lineitems_service.upsert_lineitem(owner, campaign)
-        creative = creatives_service.get_creative(link)
+        try:
+            lineitem = lineitems_service.upsert_lineitem(owner, campaign)
+        except ValueError as e:
+            g.log.error("unable to upsert lineitem: %s" % e)
+            return
+
+        creative = creatives_service.upsert_creative(author, link)
 
         lineitems_service.associate_with_creative(
             lineitem=lineitem, creative=creative)
 
 
-    def _handle_deactivate_campaign(payload):
-        campaign = PromoCampaign._by_fullname(payload["campaign"])
+    def _handle_deactivate(payload):
+        campaigns = PromoCampaign._by_fullname(payload["campaigns"].split(","), data=True)
 
-        lineitem = lineitems_service.get_lineitem(campaign)
-        if lineitem:
-            lineitems_service.deactivate(lineitem)
+        lineitems_service.deactivate(campaigns)
+
+
+    def _handle_activate(payload):
+        campaigns = PromoCampaign._by_fullname(payload["campaigns"].split(","), data=True)
+
+        lineitems_service.activate(campaigns)
 
 
     def _handle_check_edits(payload):
-        creative = creatives_service.get_creative(link)
+        existing = Link._by_fullname(payload["link"], data=True)
+        creative = creatives_service.get_creative(existing)
 
         link = utils.dfp_creative_to_link(
             creative, link=Link._by_fullname(payload["link"], data=True))
@@ -89,9 +100,11 @@ def process():
     processor = Processor()
 
     if feature.is_enabled("dfp_selfserve"):
+        g.log.debug("dfp enabled, registering %s processors", DFP_QUEUE)
         processor.register("upsert_promotion", _handle_upsert_promotion)
         processor.register("upsert_campaign", _handle_upsert_campaign)
-        processor.register("deactivate_campaign", _handle_deactivate_campaign)
+        processor.register("activate", _handle_activate)
+        processor.register("deactivate", _handle_deactivate)
 
     processor.register("check_edits", _handle_check_edits)
 

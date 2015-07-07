@@ -1,3 +1,4 @@
+from datetime import datetime
 from googleads import dfp
 from pylons import g
 
@@ -18,16 +19,9 @@ LINE_ITEM_DEFAULTS = {
         "size": NATIVE_SIZE
     }],
     "reserveAtCreation": False,
-    "primaryGoal": {
-        "goalType": "DAILY",
-        "unitType": "IMPRESSIONS",
-        "units": 0,
-    },
     "targeting": {
         "inventoryTargeting": {
-            "targetedAdUnits": [{
-                "adUnitId": "mw_card_test_1",
-            }],
+            "targetedPlacementIds": [1712944],
         },
     },
 }
@@ -43,17 +37,22 @@ def _get_campaign_name(campaign):
                     _date_to_string(campaign.start_date),
                     _date_to_string(campaign.end_date)))[:255]
 
-def _get_platform(campaign):
-    if campaign.platform == "desktop":
-        return "WEB"
-    if campaign.platform == "mobile":
-        return "MOBILE"
-    else:
-        return "ANY"
-
 
 def _get_cost_type(campaign):
     return "CPM" # everything is CPM currently
+
+
+def _get_goal_type(campaign):
+    if campaign.impressions > 0:
+        return {
+            "goalType": "LIFETIME",
+            "unitType": "IMPRESSIONS",
+            "units": campaign.impressions,
+        }
+
+    return {
+        "goalType": "NONE",
+    }
 
 
 def _priority_to_lineitem_type(priority):
@@ -63,10 +62,9 @@ def _priority_to_lineitem_type(priority):
         return "SPONSORSHIP"
     elif priority == promo.MEDIUM:
         return "STANDARD"
-    elif priority == promo.REMNANT:
-        return "BULK"
-    elif priority == promo.HOUSE:
-        return "HOUSE"
+    elif (priority == promo.REMNANT or
+          priority == promo.HOUSE):
+        return "PRICE_PRIORITY"
 
 
 def _campaign_to_lineitem(campaign, order=None, existing=None):
@@ -75,17 +73,31 @@ def _campaign_to_lineitem(campaign, order=None, existing=None):
 
     lineitem = {
         "name": _get_campaign_name(campaign),
-        "startDateTime": utils.datetime_to_dfp_datetime(campaign.start_date),
-        "endDateTime": utils.datetime_to_dfp_datetime(campaign.end_date),
         "lineItemType": _priority_to_lineitem_type(campaign.priority),
         "costPerUnit": utils.dollars_to_dfp_money(campaign.cpm / 100),
         "costType": _get_cost_type(campaign),
-        "targetPlatform": _get_platform(campaign),
+        "targetPlatform": "ANY", # other targets are deprecated
         "skipInventoryCheck": campaign.priority.inventory_override,
-        "primaryGoal": {
-            "units": campaign.impressions,
-        },
+        "primaryGoal": _get_goal_type(campaign),
     }
+
+    if existing is None:
+        # TODO: non-global timezone_id
+        now = datetime.today()
+        now = now.replace(tzinfo=campaign.start_date.tzinfo)
+        start_date = campaign.start_date
+        end_date = campaign.end_date
+
+        lineitem["startDateTime"] = utils.datetime_to_dfp_datetime(
+            start_date, timezone_id=g.dfp_timezone_id)
+        lineitem["endDateTime"] = utils.datetime_to_dfp_datetime(
+            end_date, timezone_id=g.dfp_timezone_id)
+
+        if start_date < now:
+            lineitem["startDateTimeType"] = "IMMEDIATELY"
+
+        if end_date < now:
+            raise ValueError("can't creative lineitem that ends in the past. (%s-%s)" % (start_date, end_date))
 
     if existing:
         return merge_deep(existing, lineitem)
@@ -121,7 +133,11 @@ def create_lineitem(user, campaign):
     dfp_lineitem_service = DfpService("LineItemService")
     order = orders_service.upsert_order(user)
 
-    lineitem = _campaign_to_lineitem(campaign, order=order)
+    try:
+        lineitem = _campaign_to_lineitem(campaign, order=order)
+    except ValueError as e:
+        g.log.debug("unable to convert campaign to valid line item for campaign %s" % campaign._fullname)
+        raise e
     lineitems = dfp_lineitem_service.execute("createLineItems", [lineitem])
 
     return lineitems[0]
@@ -182,34 +198,32 @@ def associate_with_creative(lineitem, creative):
         return associations[0]
 
 
-def deactivate(campaign):
-    dfp_association_service = DfpService("LineItemCreativeAssociationService")
-    lineitem = get_lineitem(campaign)
+def _perform_lineitem_action(campaigns, action):
+    if not isinstance(campaigns, list):
+        campaigns = [campaigns]
 
-    if not lineitem:
-        return True
-
-    lineitem_id = lineitem["id"]
+    dfp_lineitem_service = DfpService("LineItemService")
     values = [{
-        "key": "lineItemId",
-        "value": {
-            "xsi_type": "NumberValue",
-            "value": lineitem_id
-        },
-    }, {
-        "key": "status",
+        "key": "externalId",
         "value": {
             "xsi_type": "TextValue",
-            "value": "ACTIVE"
+            "value": [campaign._fullname for campaign in campaigns],
         },
     }]
+    query = "WHERE externalId = :externalId"
+    statement = dfp.FilterStatement(query, values)
+    response = dfp_lineitem_service.execute(
+        "performLineItemAction",
+        {"xsi_type": action},
+        statement.ToStatement())
 
-    query = "WHERE lineItemId = :lineItemId AND status = :status"
-    statement = dfp.FilterStatement(query, values, 1)
+    return response and int(response["numChanges"]) === len(campaigns):
 
-    response = dfp_association_service.execute(
-            "getLineItemCreativeAssociationsByStatement",
-            statement.ToStatement())
 
-    return result and int(result["numChanges"]) > 0
+def activate(campaigns):
+    return _perform_lineitem_action(campaigns, action="ActivateLineItems")
+
+
+def deactivate(campaigns):
+    return _perform_lineitem_action(campaigns, action="PauseLineItems")
 
