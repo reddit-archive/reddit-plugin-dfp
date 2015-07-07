@@ -37,24 +37,24 @@ class DfpService():
         self.service = get_service(service_name)
         self.retries = 3
         self.delay_exponent = delay_exponent
-        self.attempt = 0
+        self.attempt = 1
 
     def execute(self, method, *args, **kwargs):
         response = None
         call = getattr(self.service, method)
-        while response == None and self.attempt < self.retries:
+        while response == None and self.attempt <= self.retries:
             try:
                 response = call(*args, **kwargs)
             except WebFault as e:
                 if errors.get_reason(e) == "EXCEEDED_QUOTA":
                     wait = self.attempt ** self.delay_exponent
-                    g.log.debug("failed attempt %d, retrying in %d seconds." % ((self.attempt + 1), wait))
+                    g.log.debug("failed attempt %d, retrying in %d seconds." % (self.attempt, wait))
                     time.sleep(wait)
                     self.attempt += 1
                 else:
                     raise e
 
-        if not response:
-            raise RateLimitException("failed after %d attempts" % (self.attempt + 1))
+        if not response and self.attempt == self.retries:
+            raise errors.RateLimitException("failed after %d attempts" % self.attempt)
 
         return response
