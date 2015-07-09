@@ -116,8 +116,8 @@ def create_creative(user, link):
 
     response = dfp_creative_service.execute("createCreatives", [creative])
 
-    if ("results" in response and len(response["results"])):
-        creative = response["results"][0]
+    if (response and len(response)):
+        creative = response[0]
         link.dfp_creative_id = creative.id
         link._commit()
 
