@@ -201,32 +201,49 @@ def associate_with_creative(lineitem, creative):
         return associations[0]
 
 
-def _perform_lineitem_action(campaigns, action):
-    if not isinstance(campaigns, list):
-        campaigns = [campaigns]
-
+def _perform_lineitem_action(action, query):
     dfp_lineitem_service = DfpService("LineItemService")
-    values = [{
-        "key": "externalId",
-        "value": {
-            "xsi_type": "TextValue",
-            "value": [campaign._fullname for campaign in campaigns],
-        },
-    }]
-    query = "WHERE externalId = :externalId"
-    statement = dfp.FilterStatement(query, values)
+    statement = dfp.FilterStatement(query)
     response = dfp_lineitem_service.execute(
         "performLineItemAction",
         {"xsi_type": action},
         statement.ToStatement())
 
-    return response and int(response["numChanges"]) === len(campaigns):
+    return response
 
 
 def activate(campaigns):
-    return _perform_lineitem_action(campaigns, action="ActivateLineItems")
+    if not isinstance(campaigns, list):
+        campaigns = [campaigns]
+
+    query = "WHERE status IN (%(status)s) and externalId IN (%(ids)s)"
+    ids = ",".join(["'" + campaign + "'" for campaign in campaigns])
+
+    try:
+        _perform_lineitem_action(
+            action="ActivateLineItems",
+            query=(query % {"status": "'DRAFT', 'INACTIVE'", "ids": ids}))
+        _perform_lineitem_action(
+            action="ResumeLineItems",
+            query=(query % {"status": "'PAUSE'", "ids": ids}))
+    except:
+        return False
+
+    return True
 
 
 def deactivate(campaigns):
-    return _perform_lineitem_action(campaigns, action="PauseLineItems")
+    if not isinstance(campaigns, list):
+        campaigns = [campaigns]
+
+    query = ("WHERE NOT status IN ('DRAFT', 'INACTIVE', 'PAUSED') " +
+             " and externalId IN (%s)" % 
+             ",".join(["'" + campaign + "'" for campaign in campaigns]))
+
+    try:
+        _perform_lineitem_action(action="PauseLineItems", query=query)
+    except:
+        return False
+
+    return True
 

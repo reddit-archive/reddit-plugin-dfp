@@ -75,15 +75,24 @@ def process():
 
 
     def _handle_deactivate(payload):
-        campaigns = PromoCampaign._by_fullname(payload["campaigns"].split(","), data=True)
+        campaign_ids = payload["campaigns"] and payload["campaigns"].split(",")
 
-        lineitems_service.deactivate(campaigns)
+        if not campaign_ids:
+            return
+
+        campaigns = PromoCampaign._by_fullname(campaign_ids, data=True)
+        lineitems_service.deactivate(campaign_ids)
 
 
     def _handle_activate(payload):
-        campaigns = PromoCampaign._by_fullname(payload["campaigns"].split(","), data=True)
+        campaign_ids = payload["campaigns"] and payload["campaigns"].split(",")
 
-        lineitems_service.activate(campaigns)
+        if not campaign_ids:
+            return
+
+        campaigns = PromoCampaign._by_fullname(campaign_ids, data=True)
+
+        lineitems_service.activate(campaign_ids)
 
 
     def _handle_check_edits(payload):
