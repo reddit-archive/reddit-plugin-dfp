@@ -45,10 +45,10 @@ def trim(string, length, ellipsis=u"…"):
     return string[:length-1] + ellipsis if len(string) > length else string
 
 
-def dollars_to_dfp_money(dollars):
+def pennies_to_dfp_money(pennies):
     return {
         "currencyCode": "USD",
-        "microAmount": dollars * ONE_MICRO_DOLLAR,
+        "microAmount": int(pennies * ONE_MICRO_DOLLAR / 100),
     }
 
 

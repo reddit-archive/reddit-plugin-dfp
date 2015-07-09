@@ -74,7 +74,7 @@ def _campaign_to_lineitem(campaign, order=None, existing=None):
     lineitem = {
         "name": _get_campaign_name(campaign),
         "lineItemType": _priority_to_lineitem_type(campaign.priority),
-        "costPerUnit": utils.dollars_to_dfp_money(campaign.cpm / 100),
+        "costPerUnit": utils.pennies_to_dfp_money(campaign.cpm),
         "costType": _get_cost_type(campaign),
         "targetPlatform": "ANY", # other targets are deprecated
         "skipInventoryCheck": campaign.priority.inventory_override,
