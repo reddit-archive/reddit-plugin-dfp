@@ -49,21 +49,21 @@ def _link_to_creative(link, advertiser=None, existing=None):
             "uniqueName": "selftext",
             "value": link.selftext
         }, {
-            "xsi_type": "StringCreativeTemplateVariableValue",
+            "xsi_type": "UrlCreativeTemplateVariableValue",
             "uniqueName": "thumbnail_url",
-            "value": link.thumbnail_url,
+            "value": getattr(link, "thumbnail_url", ""),
         }, {
-            "xsi_type": "StringCreativeTemplateVariableValue",
+            "xsi_type": "UrlCreativeTemplateVariableValue",
             "uniqueName": "mobile_ad_url",
-            "value": link.mobile_ad_url,
+            "value": getattr(link, "mobile_ad_url", ""),
         }, {
-            "xsi_type": "StringCreativeTemplateVariableValue",
+            "xsi_type": "UrlCreativeTemplateVariableValue",
             "uniqueName": "third_party_tracking",
-            "value": link.third_party_tracking,
+            "value": getattr(link, "third_party_tracking", ""),
         }, {
-            "xsi_type": "StringCreativeTemplateVariableValue",
+            "xsi_type": "UrlCreativeTemplateVariableValue",
             "uniqueName": "third_party_tracking_2",
-            "value": link.third_party_tracking_2,
+            "value": getattr(link, "third_party_tracking_2", ""),
         }, {
             "xsi_type": "StringCreativeTemplateVariableValue",
             "uniqueName": "link_id",
