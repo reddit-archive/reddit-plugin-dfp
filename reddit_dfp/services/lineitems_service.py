@@ -16,7 +16,8 @@ NATIVE_SIZE = {
 LINE_ITEM_DEFAULTS = {
     "creativeRotationType": "OPTIMIZED",
     "creativePlaceholders": [{
-        "size": NATIVE_SIZE
+        "size": NATIVE_SIZE,
+        "creativeSizeType": "INTERSTITIAL",
     }],
     "reserveAtCreation": False,
     "targeting": {
