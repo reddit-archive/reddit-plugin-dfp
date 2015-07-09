@@ -129,6 +129,7 @@ def get_lineitem(campaign):
     else:
         return None
 
+
 def create_lineitem(user, campaign):
     dfp_lineitem_service = DfpService("LineItemService")
     order = orders_service.upsert_order(user)
@@ -141,6 +142,7 @@ def create_lineitem(user, campaign):
     lineitems = dfp_lineitem_service.execute("createLineItems", [lineitem])
 
     return lineitems[0]
+
 
 def upsert_lineitem(user, campaign):
     dfp_lineitem_service = DfpService("LineItemService")
