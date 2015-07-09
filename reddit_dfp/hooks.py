@@ -20,7 +20,8 @@ def upsert_promotion(link):
     action = ("activate" 
                 if promote.is_accepted(link) and not link._deleted else
                     "deactivate")
-    campaigns = PromoCampaign._by_link(link)
+    campaigns = list(PromoCampaign._by_link(link._id))
+
     if not campaigns:
         return
 
