@@ -65,6 +65,13 @@ def dfp_template_to_dict(template):
     return result
 
 
+def get_template_variable(creative, variable):
+    attributes = dfp_template_to_dict(
+        creative.creativeTemplateVariableValues)
+
+    return attributes.get(variable, None)
+
+
 def dfp_creative_to_link(creative, link=None):
     from r2.models import (
         Link,

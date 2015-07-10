@@ -1,8 +1,10 @@
 from googleads import dfp
 from pylons import g
 
+from r2.lib.utils import to36
 from r2.models import (
     Account,
+    Link,
     promo,
 )
 
@@ -140,4 +142,70 @@ def update_creative(link, creative):
     creatives = dfp_creative_service.execute("updateCreatives", [updated])
 
     return creatives[0]
+
+
+def bulk_upsert(links):
+    updates = filter(lambda user: getattr(user, "dfp_creative_id", False), links)
+    inserts = filter(lambda user: not getattr(user, "dfp_creative_id", False), links)
+
+    dfp_creative_service = DfpService("CreativeService")
+    creatives = []
+
+    if updates:
+        existing_creatives = {}
+        statement = dfp.FilterStatement(
+            "WHERE id IN (%s)" % 
+                ", ".join([str(link.dfp_creative_id) for link in updates]))
+
+        while True:
+            response = dfp_creative_service.execute(
+                "getCreativesByStatement",
+                statement.ToStatement(),
+            )
+
+            if "results" in response:
+                for creative in response["results"]:
+                    existing_creatives[creative.id] = creative
+                statement.offset += dfp.SUGGESTED_PAGE_LIMIT
+            else:
+                break
+
+
+        updated = dfp_creative_service.execute("updateCreatives", [
+            _link_to_creative(
+                link=link,
+                existing=existing_creatives[link.dfp_creative_id],
+            )
+        for link in updates])
+
+        creatives += updated
+
+    if inserts:
+        authors = Account._byID([link.author_id for link in inserts], return_dict=False)
+        advertisers = advertisers_service.bulk_upsert(authors)
+        advertisers_by_author = {
+            advertiser.externalId: advertiser
+        for advertiser in advertisers}
+
+        inserted = dfp_creative_service.execute("createCreatives", [
+            _link_to_creative(
+                link=link,
+                advertiser=advertisers_by_author[
+                    Account._fullname_from_id36(to36(link.author_id))
+                ],
+            )
+        for link in inserts])
+
+        creatives += inserted
+
+    creatives_by_fullname = {
+        utils.get_template_variable(creative, "link_id"): creative
+    for creative in creatives}
+
+    for link in links:
+        creative = creatives_by_fullname[link._fullname]
+        link.dfp_creative_id = creative.id
+        link._commit()
+
+    return creatives
 
