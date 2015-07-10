@@ -22,6 +22,8 @@ class Dfp(Plugin):
             "dfp_cert_fingerprint",
             "dfp_service_version",
             "dfp_selfserve_template_name",
+            "dfp_selfserve_mobile_web_placement_name",
+            "dfp_selfserve_dekstop_placement_name",
         ],
     }
 
@@ -36,17 +38,34 @@ class Dfp(Plugin):
     def add_routes(self, mc):
         mc("/api/dfp/link", controller="link", action="link_from_id")
 
-    def load_selfserve_template(self):
-        from reddit_dfp.services import template_service
+    def load_cached_ids(self):
+        from reddit_dfp.services import (
+            placement_service,
+            template_service,
+        )
 
-        name = g.dfp_selfserve_template_name
         template = template_service.get_template_by_name(
-            name)
+            g.dfp_selfserve_template_name)
 
         if not template:
-            raise ValueError("cannot find template '%s'" % name)
+            raise ValueError("cannot find template '%s'" % g.dfp_selfserve_template_name)
+
+        mobile_web_placement = placement_service.get_placement_by_name(
+            g.dfp_selfserve_mobile_web_placement_name)
+        desktop_placement = placement_service.get_placement_by_name(
+            g.dfp_selfserve_dekstop_placement_name)
+
+        if not mobile_web_placement:
+            raise ValueError("cannot find placement '%s'"
+                % g.dfp_selfserve_mobile_web_placement_name)
+
+        if not desktop_placement:
+            raise ValueError("cannot find placement '%s'"
+                % g.dfp_selfserve_dekstop_placement_name)
 
         g.dfp_selfserve_template_id = int(template.id)
+        g.dfp_selfserve_mobile_web_placement_id = int(mobile_web_placement.id)
+        g.dfp_selfserve_desktop_placement_id = int(desktop_placement.id)
 
     def load_controllers(self):
         from reddit_dfp.controllers.linkcontroller import LinkController
@@ -56,4 +75,4 @@ class Dfp(Plugin):
         dfp.load_client()
         hooks.register_all()
 
-        self.load_selfserve_template()
+        self.load_cached_ids()

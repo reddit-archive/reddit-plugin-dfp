@@ -20,11 +20,6 @@ LINE_ITEM_DEFAULTS = {
         "creativeSizeType": "INTERSTITIAL",
     }],
     "reserveAtCreation": False,
-    "targeting": {
-        "inventoryTargeting": {
-            "targetedPlacementIds": [1712944],
-        },
-    },
 }
 
 
@@ -56,6 +51,18 @@ def _get_goal_type(campaign):
     }
 
 
+def _get_placement_ids(campaign):
+    if campaign.platform == "desktop":
+        return [g.dfp_selfserve_desktop_placement_id]
+    if campaign.platform == "mobile":
+        return [g.dfp_selfserve_mobile_web_placement_id]
+    else:
+        return [
+            g.dfp_selfserve_desktop_placement_id,
+            g.dfp_selfserve_mobile_web_placement_id,
+        ]
+
+
 def _priority_to_lineitem_type(priority):
     from r2.models import promo
 
@@ -80,6 +87,11 @@ def _campaign_to_lineitem(campaign, order=None, existing=None):
         "targetPlatform": "ANY", # other targets are deprecated
         "skipInventoryCheck": campaign.priority.inventory_override,
         "primaryGoal": _get_goal_type(campaign),
+        "targeting": {
+            "inventoryTargeting": {
+                "targetedPlacementIds": _get_placement_ids(campaign),
+            },
+        },
     }
 
     if existing is None:
