@@ -1,3 +1,5 @@
+import time
+
 from googleads import dfp
 from googleads import oauth2
 from os import path
